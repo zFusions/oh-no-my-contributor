@@ -65,6 +65,9 @@ hook cannot see plumbing, so this one watches every ref update:
 
 - `git commit-tree` + `update-ref`? Checked.
 - `git am`, `git rebase`, `git tag -a`? Checked.
+- AI trailers in a plumbing commit's message? Rejected — objects are
+  immutable once hashed, so the transaction aborts instead of
+  rewriting.
 - It only inspects objects no existing ref can reach, so your old
   history never gets in the way, and it sleeps through fetch/clone so
   pulling can never brick anything.
@@ -133,9 +136,10 @@ re-clone. There is no scenario where your code changes.
 - AI-pattern matching is heuristic. It can miss an unknown tool and,
   rarely, flag a human whose name looks machine-generated. Read the
   dry-run report before confirming.
-- `reference-transaction` checks identities, not messages: a hand-built
-  commit with the owner's identity but AI trailers can still slip
-  through plumbing. `git commit`/`merge` strip those properly.
+- `reference-transaction` rejects AI trailers in new commit messages
+  but cannot rewrite them: a plumbing commit (`commit-tree`) with the
+  owner's identity and AI trailers is refused, not cleaned. Use
+  `git commit`/`merge` for messages you want stripped automatically.
 - Committed from Windows? The exec bit may be missing
   (`core.fileMode` is off):
   `git update-index --chmod=+x .githooks/prepare-commit-msg .githooks/reference-transaction`

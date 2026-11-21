@@ -5,13 +5,11 @@
 # git tag -a and other plumbing paths.
 #
 # Same identity rules as prepare-commit-msg (committer allowlist +
-# AI-pattern rejection on committer/tagger/author).
-#
-# Safety valves:
-#   - skipped during fetch/clone/receive (GIT_QUARANTINE_PATH)
-#   - only objects unreachable from any ref are checked (old history safe)
-#   - messages NOT checked: blocking trailers would break rebases of
-#     pre-cleanup history; stripping stays in prepare-commit-msg.
+# AI-pattern rejection on committer/tagger/author), plus the same
+# trailer rules applied as rejection: plumbing commits are immutable,
+# so AI attribution in their message aborts the transaction instead
+# of being stripped. Only commits unreachable from any ref are scanned,
+# so pre-cleanup history never trips this; run the cleanup first.
 #
 # Keep the regexes below in sync with prepare-commit-msg.sh.
 
@@ -24,13 +22,14 @@ allow_file="$hook_dir/allowed-identities"
 fail() { echo "oh-no-my-contributor: $1" >&2; exit 1; }
 
 [ -f "$allow_file" ] || fail "allowlist missing ($allow_file). Re-run install/install.sh in this repo."
-for tool in git grep sed sort; do
+for tool in git grep sed sort awk head; do
     command -v "$tool" >/dev/null 2>&1 || fail "$tool not found in PATH."
 done
 
 STRONG_RE='devin-ai-integration|devin\.ai|cursoragent|copilot|@anthropic\.com|claude\.ai|claude-code|openai|chatgpt|gemini-code-assist|google-labs-jules|aider|windsurf|codeium|cline|amazon[- ]?q|\[bot\]@|(^|[^a-z0-9])bot@'
 WEAK_RE='(^|[^a-z0-9_])(claude|cursor|devin|gemini|chatgpt|codex)([^a-z0-9_]|$)'
 MACHINE_RE='noreply|\[bot\]|users\.noreply\.github\.com|@anthropic\.com|@claude\.ai|claude-code|@openai\.com|@cursor\.|cursoragent|devin-ai|@codeium\.|@windsurf\.|@aider|@cline|jules|gemini-code-assist|copilot'
+TOOL_RE='devin|claude|anthropic|cursor|copilot|chatgpt|openai|codex|gemini|jules|aider|windsurf|codeium|cline|amazon[- ]?q|gpt'
 
 # $1 = "Name <email>" -> 0 if it looks like an AI/bot identity
 is_ai() {
@@ -39,6 +38,10 @@ is_ai() {
     em="$(printf '%s' "$1" | sed -n 's/.*<\([^>]*\)>.*/\1/p')"
     [ -n "$em" ] && printf '%s' "$em" | grep -qiE "$MACHINE_RE"
 }
+
+# awk -v parses values like string literals: \[ would collapse to a
+# bracket expression. Double every backslash so the regex survives.
+awkesc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
 
 ZERO=0000000000000000000000000000000000000000
 
@@ -84,6 +87,33 @@ EOF
     done <<EOF
 $ids
 EOF
+
+    # Message: same trailer rules as prepare-commit-msg, applied as
+    # rejection (commit objects are immutable once hashed). Human
+    # co-author/signed-off trailers pass because is_ai() keeps the
+    # two-level matching.
+    bad="$(git log --format=%B "$new" --not --all </dev/null 2>/dev/null \
+        | awk -v strong="$(awkesc "$STRONG_RE")" -v weak="$(awkesc "$WEAK_RE")" \
+              -v mach="$(awkesc "$MACHINE_RE")" -v tools="$TOOL_RE" '
+        function ai_ident(s,   em) {
+            if (tolower(s) ~ strong) return 1
+            if (tolower(s) ~ weak) {
+                em = s; sub(/.*</, "", em); sub(/>.*/, "", em)
+                if (em ~ mach) return 1
+            }
+            return 0
+        }
+        {
+            l = tolower($0)
+            if (l ~ /^[ \t]*(co-authored-by|signed-off-by):/) {
+                id = $0; sub(/^[^:]*:[ \t]*/, "", id)
+                if (ai_ident(id)) print
+            } else if (l ~ /^[ \t]*generated[ \t]+(with|by)[ \t]/ || l ~ /^[^a-z0-9]*generated[ \t]+(with|by)[ \t]/) {
+                rest = $0; sub(/^[ \t]*/, "", rest); sub(/^[^a-zA-Z]+/, "", rest)
+                if (tolower(rest) ~ tools) print
+            }
+        }' | head -1)"
+    [ -z "$bad" ] || fail "commit message contains AI attribution: $bad"
 done
 
 exit 0

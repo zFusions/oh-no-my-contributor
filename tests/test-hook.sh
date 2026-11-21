@@ -122,6 +122,23 @@ OK_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' 
 git update-ref refs/heads/legit "$OK_C" >/dev/null 2>&1
 check "commit-tree owner committer allowed" "$?" "0"
 
+# Owner identity but AI trailer in the message -> blocked (plumbing
+# bypass of prepare-commit-msg's message stripping).
+TRAILER_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' \
+       GIT_AUTHOR_NAME='Repo Owner' GIT_AUTHOR_EMAIL='owner@example.com' \
+       git commit-tree "$TREE" -p "$PARENT" -m legit \
+       -m "Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>" </dev/null)"
+git update-ref refs/heads/evil-trailer "$TRAILER_C" >/dev/null 2>&1
+check_blocked "commit-tree AI trailer blocked" "$?"
+
+# Owner identity + human co-author trailer -> allowed.
+HUMAN_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' \
+       GIT_AUTHOR_NAME='Repo Owner' GIT_AUTHOR_EMAIL='owner@example.com' \
+       git commit-tree "$TREE" -p "$PARENT" -m legit \
+       -m "Co-Authored-By: Claude <claude.human@gmail.com>" </dev/null)"
+git update-ref refs/heads/human-trailer "$HUMAN_C" >/dev/null 2>&1
+check "commit-tree human trailer allowed" "$?" "0"
+
 # Annotated tag with AI tagger -> blocked.
 GIT_COMMITTER_NAME='Claude' GIT_COMMITTER_EMAIL='noreply@anthropic.com' \
   git tag -a v-evil -m taggy >/dev/null 2>&1
