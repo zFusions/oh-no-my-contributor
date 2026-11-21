@@ -49,7 +49,8 @@ home. By morning the contributors graph shows one human and zero
 witnesses. The AIs keep coding, just off the books, which is where
 they should have been all along.
 
-## What it does
+<details>
+<summary><b>What it does</b></summary>
 
 ```
 scan → report → clean → protect
@@ -65,7 +66,10 @@ scan → report → clean → protect
 
 Your code never changes. Only the fingerprints.
 
-### The two hooks
+</details>
+
+<details>
+<summary><b>The two hooks</b></summary>
 
 **`prepare-commit-msg`** runs on every `git commit` and `git merge`,
 `--no-verify` included: committer must be the owner identity recorded
@@ -83,7 +87,10 @@ existing `GEMINI.md`, `.cursorrules`, `.windsurfrules` and
 `.github/copilot-instructions.md`, so every agent that reads the repo
 knows the rules before it commits.
 
-## Install
+</details>
+
+<details open>
+<summary><b>Install</b></summary>
 
 The whole `oh-no-my-contributor/` folder is the skill. Drop it into
 whichever skills directory your agent reads, or run:
@@ -114,13 +121,19 @@ skips the git hook and warns instead of overriding. `--force` overrides
 with a backup. `install/uninstall.sh` / `uninstall.ps1` removes exactly
 what was added.
 
-## Requirements
+</details>
+
+<details>
+<summary><b>Requirements</b></summary>
 
 - `git` 2.22+
 - Python 3.8+ with `git-filter-repo` (`pip install git-filter-repo`),
   only for the history cleanup, not for the guardrails
 
-## Honest limits
+</details>
+
+<details>
+<summary><b>Honest limits</b></summary>
 
 This tool rewrites git *metadata*, never file contents. Before pushing,
 the script compares the tree of **every commit** (old to new via
@@ -141,7 +154,10 @@ commit-map). Worst case: keep `backup.git` and re-clone.
 - Cleanup can't retract cached copies (search indexes, forks), and
   rewriting drops commit signatures.
 
-## When not to use it
+</details>
+
+<details>
+<summary><b>When not to use it</b></summary>
 
 The failure modes are rare but real, so know them before you run:
 
@@ -168,7 +184,10 @@ The failure modes are rare but real, so know them before you run:
 If none of that applies, you're fine. If it does, uninstall takes ten
 seconds and `.ohnmc.bak` files keep your pre-install copies.
 
-## Layout
+</details>
+
+<details>
+<summary><b>Layout</b></summary>
 
 ```
 oh-no-my-contributor/
@@ -187,11 +206,17 @@ oh-no-my-contributor/
 └── .github/workflows/test.yml   # CI: hooks on 3 OS, installer, cleanup script
 ```
 
-## License
+</details>
+
+<details>
+<summary><b>License</b></summary>
 
 MIT. Do whatever you want with it, just keep your name on your commits.
 
-## Fine print nobody reads
+</details>
+
+<details>
+<summary><b>Fine print nobody reads</b></summary>
 
 This tool rewrites git history and installs hooks that can refuse your
 commits. I am not responsible for anything that happens when you run
@@ -199,3 +224,5 @@ it. Make a backup of your project first, a real one (`cp -r`), not a
 vibe, and read the dry-run output before you say yes. If a hook blocks
 your commit, that is the tool working as intended, not a bug to route
 around.
+
+</details>
