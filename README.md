@@ -1,5 +1,9 @@
 # Oh no, my contributor
 
+<p align="center">
+  <img src="docs/banner.png" alt="An AI hiding behind a wall while a human takes the commit credit" width="640">
+</p>
+
 *Your repo. Your name on it. No AI in the contributors graph.*
 
 [![tests](https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml/badge.svg)](https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml)
