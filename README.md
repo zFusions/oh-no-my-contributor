@@ -22,6 +22,13 @@ your repo looks like a group project where the group was ChatGPT.
 
 This skill fixes that. Past *and* future.
 
+It runs like an undercover op. The cleanup rewrites history while
+everyone sleeps, then the hooks work the door for good: IDs checked
+at the border, AI trailers stripped on sight, suspicious commits sent
+home. By morning the contributors graph shows one human and zero
+witnesses. The AIs keep coding, just off the books, which is where
+they should have been all along.
+
 ## What it does
 
 ```
