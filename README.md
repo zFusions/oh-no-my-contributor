@@ -17,10 +17,9 @@
   <img src="docs/banner.png" alt="An AI hiding behind a wall while a human takes the commit credit" width="640">
 </p>
 
-## The wall did it.
+## He commits by night. The graph by day.
 
-*Your name on every commit. Someone else's fingerprints on every line.
-Nobody asks questions at this point.*
+*Every commit has an alibi. The code confesses anyway.*
 
 You asked an AI to build your project. It built your project. Then it
 helpfully signed its own name on every commit like a toddler drawing
