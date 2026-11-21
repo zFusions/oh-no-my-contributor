@@ -50,7 +50,7 @@ witnesses. The AIs keep coding, just off the books, which is where
 they should have been all along.
 
 <details>
-<summary><b>What it does</b></summary>
+<summary><b style="font-size: 1.5em">What it does</b></summary>
 
 ```
 scan → report → clean → protect
@@ -69,7 +69,7 @@ Your code never changes. Only the fingerprints.
 </details>
 
 <details>
-<summary><b>The two hooks</b></summary>
+<summary><b style="font-size: 1.5em">The two hooks</b></summary>
 
 **`prepare-commit-msg`** runs on every `git commit` and `git merge`,
 `--no-verify` included: committer must be the owner identity recorded
@@ -90,7 +90,7 @@ knows the rules before it commits.
 </details>
 
 <details open>
-<summary><b>Install</b></summary>
+<summary><b style="font-size: 1.5em">Install</b></summary>
 
 The whole `oh-no-my-contributor/` folder is the skill. Drop it into
 whichever skills directory your agent reads, or run:
@@ -124,7 +124,7 @@ what was added.
 </details>
 
 <details>
-<summary><b>Requirements</b></summary>
+<summary><b style="font-size: 1.5em">Requirements</b></summary>
 
 - `git` 2.22+
 - Python 3.8+ with `git-filter-repo` (`pip install git-filter-repo`),
@@ -133,7 +133,7 @@ what was added.
 </details>
 
 <details>
-<summary><b>Honest limits</b></summary>
+<summary><b style="font-size: 1.5em">Honest limits</b></summary>
 
 This tool rewrites git *metadata*, never file contents. Before pushing,
 the script compares the tree of **every commit** (old to new via
@@ -157,7 +157,7 @@ commit-map). Worst case: keep `backup.git` and re-clone.
 </details>
 
 <details>
-<summary><b>When not to use it</b></summary>
+<summary><b style="font-size: 1.5em">When not to use it</b></summary>
 
 The failure modes are rare but real, so know them before you run:
 
@@ -187,7 +187,7 @@ seconds and `.ohnmc.bak` files keep your pre-install copies.
 </details>
 
 <details>
-<summary><b>Layout</b></summary>
+<summary><b style="font-size: 1.5em">Layout</b></summary>
 
 ```
 oh-no-my-contributor/
@@ -209,14 +209,7 @@ oh-no-my-contributor/
 </details>
 
 <details>
-<summary><b>License</b></summary>
-
-MIT. Do whatever you want with it, just keep your name on your commits.
-
-</details>
-
-<details>
-<summary><b>Fine print nobody reads</b></summary>
+<summary><b style="font-size: 1.5em">Fine print nobody reads</b></summary>
 
 This tool rewrites git history and installs hooks that can refuse your
 commits. I am not responsible for anything that happens when you run
@@ -226,3 +219,11 @@ your commit, that is the tool working as intended, not a bug to route
 around.
 
 </details>
+
+<details>
+<summary><b style="font-size: 1.5em">License</b></summary>
+
+MIT. Do whatever you want with it, just keep your name on your commits.
+
+</details>
+
