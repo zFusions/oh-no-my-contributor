@@ -1,6 +1,10 @@
 # Oh no, my contributor
 
 <p align="center">
+  <img src="docs/logo1.png" alt="oh-no-my-contributor logo" height="96">
+</p>
+
+<p align="center">
   <img src="docs/banner.png" alt="An AI hiding behind a wall while a human takes the commit credit" width="640">
 </p>
 
