@@ -1,0 +1,76 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  hook-tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run hook test suite
+        shell: bash
+        run: bash tests/test-hook.sh
+
+  installer-tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install guardrails in a fixture repo
+        shell: bash
+        run: |
+          git init -q fixture && cd fixture
+          git config user.name "Owner" && git config user.email "o@x.com"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            powershell -NoProfile -File "$GITHUB_WORKSPACE/install/install.ps1"
+          else
+            bash "$GITHUB_WORKSPACE/install/install.sh"
+          fi
+          test -f .githooks/prepare-commit-msg
+          test -f .githooks/reference-transaction
+          grep -q oh-no-my-contributor AGENTS.md
+          test "$(git config core.hooksPath)" = ".githooks"
+          # allowlist must be LF-only even when written by PowerShell
+          ! grep -q $'\r' .githooks/allowed-identities
+      - name: Idempotent re-install keeps single block
+        shell: bash
+        run: |
+          cd fixture
+          bash "$GITHUB_WORKSPACE/install/install.sh" >/dev/null
+          test "$(grep -c 'oh-no-my-contributor:start' AGENTS.md)" -eq 1
+      - name: Uninstall removes guardrails cleanly
+        shell: bash
+        run: |
+          cd fixture
+          bash "$GITHUB_WORKSPACE/install/uninstall.sh" >/dev/null
+          test ! -d .githooks
+          ! grep -q 'oh-no-my-contributor:start' AGENTS.md
+          test -z "$(git config --get core.hooksPath || true)"
+
+  cleanup-script-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install git-filter-repo
+        run: pip install git-filter-repo
+      - name: Compile check
+        run: python -m py_compile scripts/clean_ai_authorship.py
+      - name: Dry-run detects AI trailers on a fixture repo
+        run: |
+          git init -q fixture && cd fixture
+          git config user.name "Owner" && git config user.email "o@x.com"
+          echo x > f && git add f && git commit -qm init
+          git commit -qm "feat" --allow-empty -m "Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>"
+          python "$GITHUB_WORKSPACE/scripts/clean_ai_authorship.py" --dry-run --source . | tee out.txt
+          grep -q "Messages to clean         : 1" out.txt
+          test ! -d ../fixture-history-rewrite

@@ -1,0 +1,7 @@
+# Shell scripts must keep LF line endings: a CRLF shebang breaks hooks
+# and installers on Linux/macOS when the repo is checked out on Windows.
+*.sh        text eol=lf
+*.py        text eol=lf
+# Installer-written files
+allowed-identities text eol=lf
+prepare-commit-msg text eol=lf
