@@ -17,7 +17,7 @@
   <img src="docs/banner.png" alt="An AI hiding behind a wall while a human takes the commit credit" width="640">
 </p>
 
-## ## Shhh. The commits have secrets.
+## Shhh. The commits have secrets.
 
 *Every commit has an alibi. The code confesses anyway.*
 
@@ -81,7 +81,7 @@ knows the rules before it commits.
 
 ## Install
 
-The whole `oh-no-my-contributor/` folder **is** the skill. Drop it into
+The whole `oh-no-my-contributor/` folder is the skill. Drop it into
 whichever skills directory your agent reads, or run:
 
 ```bash
