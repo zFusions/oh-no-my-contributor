@@ -33,7 +33,7 @@ TOOL_RE='devin|claude|anthropic|cursor|copilot|chatgpt|openai|codex|gemini|jules
 # $1 = "Name <email>" -> 0 if it looks like an AI/bot identity
 is_ai() {
     printf '%s' "$1" | grep -qiE "$STRONG_RE" && return 0
-    printf '%s' "$1" | grep -qE "$WEAK_RE" || return 1
+    printf '%s' "$1" | grep -qiE "$WEAK_RE" || return 1
     em="$(printf '%s' "$1" | sed -n 's/.*<\([^>]*\)>.*/\1/p')"
     [ -n "$em" ] && printf '%s' "$em" | grep -qiE "$MACHINE_RE"
 }
@@ -58,7 +58,9 @@ grep -qxF "$committer" "$allow_file" || \
 
 # 2. Strip AI attribution trailers from the message.
 if [ -n "$msg" ] && [ -f "$msg" ]; then
-    tmp="$msg.ohnmc.tmp"
+    # Unique temp name: a predictable one could be pre-planted as a
+    # symlink inside .git/ to redirect the write.
+    tmp="$(mktemp "$msg.ohnmc.XXXXXX" 2>/dev/null)" || tmp="$msg.ohnmc.$$"
     # awk -v parses values like string literals: \[ would collapse to a
     # bracket expression. Double every backslash so the regex survives.
     awkesc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }

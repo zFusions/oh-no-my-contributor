@@ -35,7 +35,7 @@ MACHINE_RE='noreply|\[bot\]|users\.noreply\.github\.com|@anthropic\.com|@claude\
 # $1 = "Name <email>" -> 0 if it looks like an AI/bot identity
 is_ai() {
     printf '%s' "$1" | grep -qiE "$STRONG_RE" && return 0
-    printf '%s' "$1" | grep -qE "$WEAK_RE" || return 1
+    printf '%s' "$1" | grep -qiE "$WEAK_RE" || return 1
     em="$(printf '%s' "$1" | sed -n 's/.*<\([^>]*\)>.*/\1/p')"
     [ -n "$em" ] && printf '%s' "$em" | grep -qiE "$MACHINE_RE"
 }
