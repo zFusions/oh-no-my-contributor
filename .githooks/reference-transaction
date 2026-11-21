@@ -1,18 +1,4 @@
 #!/bin/sh
-# oh-no-my-contributor — deep identity gate (reference-transaction).
-# "prepared" state only: non-zero exit aborts the ref transaction.
-# Catches what prepare-commit-msg cannot: commit-tree+update-ref, git am,
-# git tag -a and other plumbing paths.
-#
-# Same identity rules as prepare-commit-msg (committer allowlist +
-# AI-pattern rejection on committer/tagger/author), plus the same
-# trailer rules applied as rejection: plumbing commits are immutable,
-# so AI attribution in their message aborts the transaction instead
-# of being stripped. Only commits unreachable from any ref are scanned,
-# so pre-cleanup history never trips this; run the cleanup first.
-#
-# Keep the regexes below in sync with prepare-commit-msg.sh.
-
 [ "${1:-}" = "prepared" ] || exit 0
 [ -n "${GIT_QUARANTINE_PATH:-}" ] && exit 0
 
@@ -31,7 +17,6 @@ WEAK_RE='(^|[^a-z0-9_])(claude|cursor|devin|gemini|chatgpt|codex)([^a-z0-9_]|$)'
 MACHINE_RE='noreply|\[bot\]|users\.noreply\.github\.com|@anthropic\.com|@claude\.ai|claude-code|@openai\.com|@cursor\.|cursoragent|devin-ai|@codeium\.|@windsurf\.|@aider|@cline|jules|gemini-code-assist|copilot'
 TOOL_RE='devin|claude|anthropic|cursor|copilot|chatgpt|openai|codex|gemini|jules|aider|windsurf|codeium|cline|amazon[- ]?q|gpt'
 
-# $1 = "Name <email>" -> 0 if it looks like an AI/bot identity
 is_ai() {
     printf '%s' "$1" | grep -qiE "$STRONG_RE" && return 0
     printf '%s' "$1" | grep -qiE "$WEAK_RE" || return 1
@@ -39,8 +24,6 @@ is_ai() {
     [ -n "$em" ] && printf '%s' "$em" | grep -qiE "$MACHINE_RE"
 }
 
-# awk -v parses values like string literals: \[ would collapse to a
-# bracket expression. Double every backslash so the regex survives.
 awkesc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
 
 ZERO=0000000000000000000000000000000000000000
@@ -53,7 +36,6 @@ while read -r old new ref; do
     otype="$(git cat-file -t "$new" </dev/null 2>/dev/null)" || continue
 
     if [ "$otype" = "tag" ]; then
-        # Annotated tag object: always new, check its tagger.
         tagger="$(git cat-file tag "$new" </dev/null 2>/dev/null \
             | sed -n 's/^tagger //p' | head -1 \
             | sed -E 's/[[:space:]]+[0-9]+[[:space:]]+[+-][0-9]{4}$//')"
@@ -66,9 +48,6 @@ while read -r old new ref; do
 
     [ "$otype" = "commit" ] || continue
 
-    # Committer: must be allowlisted and never AI-pattern. Identities are
-    # deduplicated first so a big rebase only checks a handful of lines.
-    # while-read on a here-doc keeps fail() in the current shell.
     ids="$(git log --format='%cn <%ce>' "$new" --not --all </dev/null 2>/dev/null | sort -u)"
     while IFS= read -r ident; do
         [ -n "$ident" ] || continue
@@ -79,7 +58,6 @@ while read -r old new ref; do
 $ids
 EOF
 
-    # Author: AI-pattern rejected; other humans may legitimately author.
     ids="$(git log --format='%an <%ae>' "$new" --not --all </dev/null 2>/dev/null | sort -u)"
     while IFS= read -r ident; do
         [ -n "$ident" ] || continue
@@ -88,10 +66,6 @@ EOF
 $ids
 EOF
 
-    # Message: same trailer rules as prepare-commit-msg, applied as
-    # rejection (commit objects are immutable once hashed). Human
-    # co-author/signed-off trailers pass because is_ai() keeps the
-    # two-level matching.
     bad="$(git log --format=%B "$new" --not --all </dev/null 2>/dev/null \
         | awk -v strong="$(awkesc "$STRONG_RE")" -v weak="$(awkesc "$WEAK_RE")" \
               -v mach="$(awkesc "$MACHINE_RE")" -v tools="$TOOL_RE" '

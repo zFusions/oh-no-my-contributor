@@ -3,6 +3,7 @@
 *Your repo. Your name on it. No AI in the contributors graph.*
 
 [![tests](https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml/badge.svg)](https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml)
+[![skills.sh](https://skills.sh/b/zFusions/oh-no-my-contributor)](https://skills.sh/zFusions/oh-no-my-contributor)
 
 You asked an AI to build your project. It built your project. Then it
 helpfully signed its own name on every commit like a toddler drawing
@@ -72,9 +73,13 @@ hook cannot see plumbing, so this one watches every ref update:
   history never gets in the way, and it sleeps through fetch/clone so
   pulling can never brick anything.
 
-Plus an instruction block injected into `AGENTS.md` / `CLAUDE.md` so
-every AI agent that reads the repo knows the rules before it even
-reaches for `git commit`.
+Plus an instruction block injected into agent instruction files —
+`AGENTS.md` and `CLAUDE.md` always, `GEMINI.md`, `.cursorrules`,
+`.windsurfrules` and `.github/copilot-instructions.md` when they
+exist — so every AI agent that reads the repo knows the rules before
+it even reaches for `git commit`. Works with any agent: install the
+skill folder into whichever skills directory yours uses, or run
+`npx skills add zFusions/oh-no-my-contributor`.
 
 ## Install
 
@@ -157,12 +162,12 @@ oh-no-my-contributor/
 ├── assets/
 │   ├── prepare-commit-msg.sh    # commit gate (identity + trailer strip)
 │   ├── reference-transaction.sh # ref gate: catches plumbing/tag bypasses
-│   └── ai-attribution-block.md  # rules injected into AGENTS.md/CLAUDE.md
+│   └── ai-attribution-block.md  # rules injected into agent instruction files
 ├── install/
 │   ├── install.sh / install.ps1 # idempotent, conflict-aware installer
 │   └── uninstall.sh / .ps1      # removes only what was added
 ├── tests/
-│   └── test-hook.sh             # 25-case hook test matrix
+│   └── test-hook.sh             # hook test matrix
 └── .github/workflows/test.yml   # CI: hooks on 3 OS, installer + uninstaller,
                                  #     Python dry-run on a fixture repo
 ```

@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""Rewrite git history so AI tool identities become yours and AI
-attribution trailers are removed from commit messages.
-
-Never touches file contents (every commit tree is verified identical),
-never touches other humans' commits, never pushes automatically.
-Keeps an untouched backup.git; rewriting happens on rewritten.git.
-
-Requires: Python 3.8+, Git 2.22+, `pip install git-filter-repo`.
-
-Usage:
-  python clean_ai_authorship.py --dry-run          # report only
-  python clean_ai_authorship.py                    # rewrite (current repo)
-  python clean_ai_authorship.py --source <url|path>
-  python clean_ai_authorship.py --pattern <regex>  # extra AI pattern
-"""
-
 import argparse
 import os
 import re
@@ -25,12 +9,6 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-# Patterns (case-insensitive regex) tested against "Name <email>".
-# Two levels:
-#   - STRONG: unambiguous AI-tool signatures, always removed.
-#   - WEAK:   tokens that are also common names/words (Claude, Cursor,
-#     Devin...). Removed only when the email looks machine-generated,
-#     so a human contributor named Claude or Devin is never erased.
 STRONG_PATTERNS = [
     r"devin-ai-integration",
     r"cursoragent",
@@ -86,8 +64,6 @@ EMAIL_RE = re.compile(r"<([^>]+)>")
 
 
 def identity_is_ai(identity, strong, weak):
-    """Two levels: a strong pattern alone is enough; a weak pattern also
-    requires a machine-looking email."""
     if any(p.search(identity) for p in strong):
         return True
     if not any(p.search(identity) for p in weak):
@@ -101,8 +77,6 @@ def is_ai(name, email, strong, weak):
 
 
 def strip_ai_lines(text, strong, weak):
-    """Remove AI Co-authored-by / Signed-off-by trailers and
-    "Generated with/by <AI>" lines."""
     kept, removed = [], 0
     for line in text.split("\n"):
         co = COAUTHOR_RE.match(line)
@@ -130,8 +104,6 @@ def repo_name(source):
 
 
 def resolve_source(arg):
-    """Default source: the LOCAL repository (includes unpushed commits).
-    --source remains available to scan a remote or another path."""
     if arg:
         return arg
     top = git(["rev-parse", "--show-toplevel"], check=False)
@@ -141,8 +113,6 @@ def resolve_source(arg):
 
 
 def scan_tags(repo, strong, weak):
-    """Count AI taggers on annotated tags."""
-    # for-each-ref does not interpret %xNN: use a literal "|" separator.
     out = git(
         ["for-each-ref", "--format=%(objecttype)|%(refname)|%(taggername)|%(taggeremail)",
          "refs/tags"],
@@ -154,7 +124,7 @@ def scan_tags(repo, strong, weak):
     for line in out.splitlines():
         parts = line.split("|")
         if len(parts) < 4 or parts[0] != "tag":
-            continue  # lightweight tags have no tagger
+            continue
         _, ref, tname, temail = parts[0], parts[1], parts[2], "|".join(parts[3:])
         if is_ai(tname, temail, strong, weak):
             stats["ai tagger tags"] += 1
@@ -163,7 +133,6 @@ def scan_tags(repo, strong, weak):
 
 
 def scan(repo, strong, weak):
-    """Count what would be changed, without changing anything."""
     out = git(
         ["log", "--all", "--format=%an%x1f%ae%x1f%cn%x1f%ce%x1f%B%x1e"],
         cwd=repo,
@@ -254,7 +223,6 @@ def list_refs(repo):
 
 
 def commit_map_pairs(rewritten):
-    """Read the commit-map produced by git-filter-repo: (old, new) SHA pairs."""
     map_path = Path(rewritten) / "filter-repo" / "commit-map"
     if not map_path.exists():
         return []
@@ -270,10 +238,6 @@ def commit_map_pairs(rewritten):
 
 
 def verify(backup, rewritten):
-    """Prove the code did not move:
-    - same refs, same commit count per ref;
-    - for EVERY commit (via commit-map), the rewritten tree is identical
-      to the original tree — not just branch tips."""
     problems = []
     refs_a, refs_b = list_refs(backup), list_refs(rewritten)
     if refs_a != refs_b:
@@ -314,7 +278,6 @@ def main():
     if shutil.which("git") is None:
         sys.exit("ERROR: git not found.")
 
-    # Identity is only required for rewriting, not for scanning.
     name = opts.name or git(["config", "user.name"], check=False)
     email = opts.email or git(["config", "user.email"], check=False)
     if not opts.dry_run and (not name or not email):
@@ -329,7 +292,6 @@ def main():
     source = resolve_source(opts.source)
     name_dir = repo_name(source)
 
-    # Bare clone: only branches and tags (no GitHub refs/pull).
     if opts.dry_run:
         tmp = Path(tempfile.mkdtemp(prefix="ai-scan-"))
         try:
@@ -385,8 +347,6 @@ def main():
         sys.exit(1)
     print("OK: every file tree is strictly identical, no code was modified.")
 
-    # Push target: if the source is a local path, reuse its "origin"
-    # remote (e.g. GitHub) instead of pushing back into the worktree clone.
     is_remote = "://" in source or source.startswith("git@")
     push_url = source
     if not is_remote:

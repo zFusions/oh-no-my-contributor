@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# oh-no-my-contributor — hook test suite.
-# Runs the prepare-commit-msg hook against a matrix of cases.
-# Usage: bash tests/test-hook.sh   (needs git + bash + awk; works on Git Bash/Windows)
 set -u
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,7 +9,6 @@ PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  ok   %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  FAIL %s\n' "$1"; }
 check(){ if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (expected [$3] got [$2])"; fi; }
-# git dies with 128 (not 1) when a hook aborts a transaction.
 check_blocked(){ if [ "$2" -ne 0 ] 2>/dev/null; then ok "$1"; else bad "$1 (expected non-zero, got [$2])"; fi; }
 
 mkdir -p "$T/repo/.githooks"
@@ -90,17 +86,13 @@ check "trailer-only message refused, not emptied" "$?" "1"
 echo "== end-to-end: --no-verify still gated =="
 git config user.name "Repo Owner"; git config user.email "owner@example.com"
 echo x > f.txt; git add f.txt
-# prepare-commit-msg is NOT skipped by --no-verify: AI trailer must vanish.
 git commit -q --no-verify -m "test" -m "Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>"
 check "no-verify commit message clean" "$(git log -1 --format=%B | grep -c 'Co-Authored')" "0"
 
 echo "== reference-transaction: plumbing bypass attempts =="
-# git commit-tree + update-ref never runs prepare-commit-msg. The
-# reference-transaction hook must still gate the new commit's identity.
 TREE="$(git rev-parse 'HEAD^{tree}')"
 PARENT="$(git rev-parse HEAD)"
 
-# AI committer via plumbing -> transaction must abort.
 AI_C="$(GIT_COMMITTER_NAME='devin-ai-integration[bot]' GIT_COMMITTER_EMAIL='b@x.com' \
        GIT_AUTHOR_NAME='Repo Owner' GIT_AUTHOR_EMAIL='owner@example.com' \
        git commit-tree "$TREE" -p "$PARENT" -m evil </dev/null)"
@@ -108,22 +100,18 @@ git update-ref refs/heads/evil-ai "$AI_C" >/dev/null 2>&1
 check_blocked "commit-tree AI committer blocked" "$?"
 check "evil branch not created" "$(git rev-parse --verify -q refs/heads/evil-ai; echo $?)" "1"
 
-# AI author via plumbing -> blocked even with owner committer.
 AI_A="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' \
        GIT_AUTHOR_NAME='Claude' GIT_AUTHOR_EMAIL='noreply@anthropic.com' \
        git commit-tree "$TREE" -p "$PARENT" -m evil2 </dev/null)"
 git update-ref refs/heads/evil-author "$AI_A" >/dev/null 2>&1
 check_blocked "commit-tree AI author blocked" "$?"
 
-# Owner identity via plumbing -> allowed.
 OK_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' \
        GIT_AUTHOR_NAME='Repo Owner' GIT_AUTHOR_EMAIL='owner@example.com' \
        git commit-tree "$TREE" -p "$PARENT" -m legit </dev/null)"
 git update-ref refs/heads/legit "$OK_C" >/dev/null 2>&1
 check "commit-tree owner committer allowed" "$?" "0"
 
-# Owner identity but AI trailer in the message -> blocked (plumbing
-# bypass of prepare-commit-msg's message stripping).
 TRAILER_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' \
        GIT_AUTHOR_NAME='Repo Owner' GIT_AUTHOR_EMAIL='owner@example.com' \
        git commit-tree "$TREE" -p "$PARENT" -m legit \
@@ -131,7 +119,6 @@ TRAILER_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.
 git update-ref refs/heads/evil-trailer "$TRAILER_C" >/dev/null 2>&1
 check_blocked "commit-tree AI trailer blocked" "$?"
 
-# Owner identity + human co-author trailer -> allowed.
 HUMAN_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.com' \
        GIT_AUTHOR_NAME='Repo Owner' GIT_AUTHOR_EMAIL='owner@example.com' \
        git commit-tree "$TREE" -p "$PARENT" -m legit \
@@ -139,16 +126,13 @@ HUMAN_C="$(GIT_COMMITTER_NAME='Repo Owner' GIT_COMMITTER_EMAIL='owner@example.co
 git update-ref refs/heads/human-trailer "$HUMAN_C" >/dev/null 2>&1
 check "commit-tree human trailer allowed" "$?" "0"
 
-# Annotated tag with AI tagger -> blocked.
 GIT_COMMITTER_NAME='Claude' GIT_COMMITTER_EMAIL='noreply@anthropic.com' \
   git tag -a v-evil -m taggy >/dev/null 2>&1
 check_blocked "annotated tag AI tagger blocked" "$?"
 
-# Annotated tag with owner tagger -> allowed.
 git tag -a v-ok -m taggy >/dev/null 2>&1
 check "annotated tag owner tagger allowed" "$?" "0"
 
-# Old history stays reachable: branching onto an existing commit must pass.
 git branch old-history "$PARENT" >/dev/null 2>&1
 check "branch onto existing commit allowed" "$?" "0"
 

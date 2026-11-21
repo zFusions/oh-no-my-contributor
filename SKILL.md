@@ -60,7 +60,9 @@ powershell -File "<skill_dir>/install/install.ps1" [-Force]
   Lefthook, .git/hooks files); --force backs up first
 - installs .githooks/prepare-commit-msg + reference-transaction and
   .githooks/allowed-identities
-- injects assets/ai-attribution-block.md into AGENTS.md/CLAUDE.md
+- injects assets/ai-attribution-block.md into agent instruction files:
+  always AGENTS.md + CLAUDE.md, plus GEMINI.md, .cursorrules,
+  .windsurfrules, .github/copilot-instructions.md when they exist
   (markers, *.ohnmc.bak backups, refuses malformed markers)
 - uninstall: install/uninstall.sh / uninstall.ps1
 
@@ -73,9 +75,10 @@ matching keeps humans named Claude/Gemini; empty-after-strip refused;
 fails closed on missing config/tools.
 
 **reference-transaction**: same identity rules on every ref update —
-catches commit-tree+update-ref, git am, git tag -a. Only checks objects
-no existing ref can reach; skipped during fetch/clone; messages not
-checked (would break rebases of pre-cleanup history).
+catches commit-tree+update-ref, git am, git tag -a — plus AI trailers
+in new commit messages are rejected outright (plumbing commits are
+immutable, so the transaction aborts). Only checks objects no existing
+ref can reach; skipped during fetch/clone.
 
 ## Rules
 
@@ -104,4 +107,4 @@ checked (would break rebases of pre-cleanup history).
 | `scripts/clean_ai_authorship.py` | scan + verified rewrite |
 | `install/` | installers + uninstaller |
 | `assets/` | hook sources + instruction block |
-| `tests/test-hook.sh` | 25-case hook test matrix |
+| `tests/test-hook.sh` | hook test matrix |

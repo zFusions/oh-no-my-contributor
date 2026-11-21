@@ -1,7 +1,3 @@
-# oh-no-my-contributor - uninstall guardrails from the current repo.
-# Removes only what the installer added. *.ohnmc.bak files are kept.
-# Run from anywhere inside the target repository:
-#   powershell -File uninstall.ps1
 $ErrorActionPreference = 'Stop'
 
 $root = (git rev-parse --show-toplevel 2>$null)
@@ -11,7 +7,6 @@ Set-Location $root
 function Say($m)  { Write-Host $m }
 function Warn($m) { Write-Warning $m }
 
-# --- git hook -----------------------------------------------------------------
 $currentHooksPath = (git config --get core.hooksPath 2>$null)
 if (Test-Path .githooks) {
     $prevFile = '.githooks/ohnmc.previous-hooks-path'
@@ -42,9 +37,9 @@ if (Test-Path .githooks) {
     Say "no .githooks/ directory found - hook part already absent."
 }
 
-# --- instruction blocks --------------------------------------------------------
 $utf8 = New-Object System.Text.UTF8Encoding($false)
-foreach ($f in 'AGENTS.md', 'CLAUDE.md') {
+$targets = @('AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md')
+foreach ($f in $targets) {
     $path = Join-Path $root $f
     if (-not (Test-Path $path)) { continue }
     $content = [System.IO.File]::ReadAllText($path)

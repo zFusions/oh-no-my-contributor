@@ -37,7 +37,6 @@ jobs:
           test -f .githooks/reference-transaction
           grep -q oh-no-my-contributor AGENTS.md
           test "$(git config core.hooksPath)" = ".githooks"
-          # allowlist must be LF-only even when written by PowerShell
           ! grep -q $'\r' .githooks/allowed-identities
       - name: Idempotent re-install keeps single block
         shell: bash

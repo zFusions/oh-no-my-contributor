@@ -1,7 +1,3 @@
-# oh-no-my-contributor - install AI-attribution guardrails into the current repo.
-# V2: never overrides an existing hook setup unless -Force is passed.
-# Idempotent. Run from anywhere inside the target repository:
-#   powershell -File install.ps1 [-Force]
 param([switch]$Force)
 
 $ErrorActionPreference = 'Stop'
@@ -15,11 +11,11 @@ $gitDir = (git rev-parse --git-dir)
 function Say($m)  { Write-Host $m }
 function Warn($m) { Write-Warning $m }
 
-# --- detect existing hook infrastructure -------------------------------------
+$injectAlways = @('AGENTS.md', 'CLAUDE.md')
+$injectIfExists = @('GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md')
+
 $existingHooksPath = (git config --get core.hooksPath 2>$null)
 $conflicts = @()
-# hooksPath already pointing at .githooks is our own previous install,
-# not a conflict. Anything else would be bypassed by our hooksPath.
 if ($existingHooksPath -and $existingHooksPath -ne '.githooks') { $conflicts += "core.hooksPath=$existingHooksPath" }
 if (Test-Path .husky) { $conflicts += ".husky/" }
 if ((Test-Path package.json) -and (Get-Content package.json -Raw | Select-String -Quiet '"husky"')) { $conflicts += "husky(package.json)" }
@@ -48,7 +44,6 @@ if ($installHook) {
         }
     }
 
-    # Never silently overwrite different pre-existing hook files.
     foreach ($hook in 'prepare-commit-msg', 'reference-transaction') {
         $hookPath = Join-Path $root ".githooks/$hook"
         $assetPath = "$skillDir/assets/$hook.sh"
@@ -60,12 +55,10 @@ if ($installHook) {
                 Warn "existing .githooks/$hook differed - backed up to .ohnmc.bak"
             }
         }
-        # Normalize to LF: a CRLF shebang breaks the hook on Linux/macOS.
         $hookContent = [System.IO.File]::ReadAllText($assetPath) -replace "`r`n", "`n"
         [System.IO.File]::WriteAllText($hookPath, $hookContent, $utf8)
     }
 
-    # Allowlist = the repo owner's current git identities (author + committer).
     function Get-Ident($kind) {
         $raw = (git var $kind 2>$null) -join ''
         if (-not $raw) { return '' }
@@ -78,8 +71,6 @@ if ($installHook) {
         Warn "Configure them, then re-run this installer. (Instruction block still installed.)"
         $installHook = $false
     } else {
-        # WriteAllLines emits CRLF on Windows which breaks grep -x in the
-        # hook. Join with LF explicitly.
         [System.IO.File]::WriteAllText(
             (Join-Path $root '.githooks/allowed-identities'),
             (($idents -join "`n") + "`n"),
@@ -91,16 +82,15 @@ if ($installHook) {
     }
 }
 
-# --- instruction block in AGENTS.md / CLAUDE.md --------------------------------
 $block = Get-Content "$skillDir/assets/ai-attribution-block.md" -Raw -Encoding UTF8
-foreach ($f in 'AGENTS.md', 'CLAUDE.md') {
+function Inject-Block($f) {
     $path = Join-Path $root $f
     if (Test-Path $path) {
         $content = [System.IO.File]::ReadAllText($path)
         if ($content -match 'oh-no-my-contributor:start') {
             if ($content -notmatch 'oh-no-my-contributor:end') {
                 Warn "$f has a start marker but no end marker - leaving it untouched."
-                continue
+                return
             }
             if (-not (Test-Path "$path.ohnmc.bak")) { Copy-Item $path "$path.ohnmc.bak" }
             $content = [regex]::Replace(
@@ -118,11 +108,14 @@ foreach ($f in 'AGENTS.md', 'CLAUDE.md') {
     }
 }
 
+foreach ($f in $injectAlways) { Inject-Block $f }
+foreach ($f in $injectIfExists) { if (Test-Path (Join-Path $root $f)) { Inject-Block $f } }
+
 Say ""
 Say "oh-no-my-contributor installed:"
 if ($installHook) { Say "  - hook:    .githooks/prepare-commit-msg + reference-transaction (identity gate + trailer strip)" }
 else             { Say "  - hook:    SKIPPED (existing hook setup detected - see warnings)" }
-Say "  - rules:   AGENTS.md + CLAUDE.md (oh-no-my-contributor block)"
+Say "  - rules:   instruction block in agent instruction files"
 Say ""
 Say "Notes:"
 Say "  - core.hooksPath is per-clone: on a fresh clone run 'git config core.hooksPath .githooks' once."
@@ -135,5 +128,5 @@ Say ""
 Say "Uninstall:"
 Say "  git config --unset core.hooksPath"
 Say "  remove .githooks/ (only if this installer created it)"
-Say "  delete <!-- oh-no-my-contributor:start/end --> blocks from AGENTS.md / CLAUDE.md"
+Say "  delete <!-- oh-no-my-contributor:start/end --> blocks from instruction files"
 Say "  .ohnmc.bak files hold pre-install copies of edited files."
