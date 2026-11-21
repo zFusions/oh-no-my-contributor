@@ -137,6 +137,33 @@ commit-map). Worst case: keep `backup.git` and re-clone.
 - Cleanup can't retract cached copies (search indexes, forks), and
   rewriting drops commit signatures.
 
+## When not to use it
+
+The failure modes are rare but real, so know them before you run:
+
+- **Existing hook setups.** Husky, Lefthook, a custom `core.hooksPath`
+  or real hooks in `.git/hooks`: the installer detects them and skips
+  the git hook rather than break them. Do not pass `--force` unless
+  you understand what you are overriding. If the repo already has a
+  hook pipeline you depend on, this skill is not worth the conflict.
+- **Blocked commits.** If `user.name`/`user.email` are unset or the
+  allowlist goes missing, every commit fails closed until you fix it
+  or uninstall. Rare, annoying, never destructive.
+- **Dirty history + rebase.** `reference-transaction` rejects AI
+  trailers in *new* commits. Rebasing old history that still contains
+  them will abort. Run the cleanup first, or uninstall the hooks.
+- **Shared repos.** History rewriting changes every SHA. On a repo
+  with active collaborators, coordinate the force-push or don't do
+  it. Solo repo: fine.
+- **Signed commits.** Rewriting drops GPG/SSH signatures. If your
+  repo relies on them, clean the history another way.
+- **Protected branches.** Force-pushing rewritten history needs
+  branch protection lifted first. GitHub UI commits are invisible to
+  the hooks anyway, so the protection is partial there by nature.
+
+If none of that applies, you're fine. If it does, uninstall takes ten
+seconds and `.ohnmc.bak` files keep your pre-install copies.
+
 ## Layout
 
 ```
