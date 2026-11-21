@@ -28,7 +28,7 @@ on your furniture with a permanent marker.
 ```
 feat: add login page
 
-Co-Authored-By: devin-ai-integration[bot]
+Co-Authored-By: ChatGpt
 Generated with Claude
 Signed-off-by: cursoragent
 ```
