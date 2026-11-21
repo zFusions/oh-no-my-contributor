@@ -1,17 +1,21 @@
-# Oh no, my contributor
+<p align="center">
+  <img src="docs/logo1.png" width="280" alt="oh-no-my-contributor">
+</p>
+
+<h1 align="center">Oh no, my contributor</h1>
 
 <p align="center">
-  <img src="docs/logo1.png" alt="oh-no-my-contributor logo" height="96">
+  <em>Your repo. Your name on it. No AI in the contributors graph.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml"><img src="https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml/badge.svg" alt="tests"></a>
+  <a href="https://skills.sh/zFusions/oh-no-my-contributor"><img src="https://skills.sh/b/zFusions/oh-no-my-contributor" alt="skills.sh"></a>
 </p>
 
 <p align="center">
   <img src="docs/banner.png" alt="An AI hiding behind a wall while a human takes the commit credit" width="640">
 </p>
-
-*Your repo. Your name on it. No AI in the contributors graph.*
-
-[![tests](https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml/badge.svg)](https://github.com/zFusions/oh-no-my-contributor/actions/workflows/test.yml)
-[![skills.sh](https://skills.sh/b/zFusions/oh-no-my-contributor)](https://skills.sh/zFusions/oh-no-my-contributor)
 
 You asked an AI to build your project. It built your project. Then it
 helpfully signed its own name on every commit like a toddler drawing
