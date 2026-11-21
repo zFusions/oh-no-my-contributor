@@ -17,7 +17,7 @@
   <img src="docs/banner.png" alt="An AI hiding behind a wall while a human takes the commit credit" width="640">
 </p>
 
-## He commits by night. The graph by day.
+## ## Shhh. The commits have secrets.
 
 *Every commit has an alibi. The code confesses anyway.*
 
