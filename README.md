@@ -38,6 +38,10 @@ your repo looks like a group project where the group was ChatGPT.
 
 This skill fixes that. Past *and* future.
 
+```bash
+npx skills add zFusions/oh-no-my-contributor
+```
+
 It runs like an undercover op. The cleanup rewrites history while
 everyone sleeps, then the hooks work the door for good: IDs checked
 at the border, AI trailers stripped on sight, suspicious commits sent
