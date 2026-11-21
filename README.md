@@ -159,3 +159,12 @@ oh-no-my-contributor/
 ## License
 
 MIT. Do whatever you want with it, just keep your name on your commits.
+
+## Fine print nobody reads
+
+This tool rewrites git history and installs hooks that can refuse your
+commits. I am not responsible for anything that happens when you run
+it. Make a backup of your project first, a real one (`cp -r`), not a
+vibe, and read the dry-run output before you say yes. If a hook blocks
+your commit, that is the tool working as intended, not a bug to route
+around.
