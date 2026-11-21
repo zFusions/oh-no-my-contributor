@@ -1,27 +1,17 @@
 #!/bin/sh
 # oh-no-my-contributor — deep identity gate (reference-transaction).
+# "prepared" state only: non-zero exit aborts the ref transaction.
+# Catches what prepare-commit-msg cannot: commit-tree+update-ref, git am,
+# git tag -a and other plumbing paths.
 #
-# Runs on every reference update, in the "prepared" state only, where a
-# non-zero exit aborts the whole transaction. It catches the paths that
-# prepare-commit-msg cannot see:
+# Same identity rules as prepare-commit-msg (committer allowlist +
+# AI-pattern rejection on committer/tagger/author).
 #
-#   - git commit-tree + git update-ref
-#   - git am / git rebase / plumbing-created commits
-#   - git tag -a (annotated tag objects carry a tagger, no commit hook)
-#
-# What it enforces (same rules as prepare-commit-msg):
-#   - committer must be in .githooks/allowed-identities
-#   - committer and tagger matching AI patterns are rejected
-#   - author matching an AI pattern is rejected
-#
-# Deliberate safety valves:
-#   - skipped during fetch/clone/receive (GIT_QUARANTINE_PATH) so
-#     pulling foreign objects can never brick a clone
-#   - only objects NOT reachable from any existing ref are checked, so
-#     branching, resetting or tagging old history never breaks
-#   - commit messages are NOT checked here: blocking on trailers would
-#     make rebasing pre-cleanup history impossible. Trailer stripping
-#     stays in prepare-commit-msg.
+# Safety valves:
+#   - skipped during fetch/clone/receive (GIT_QUARANTINE_PATH)
+#   - only objects unreachable from any ref are checked (old history safe)
+#   - messages NOT checked: blocking trailers would break rebases of
+#     pre-cleanup history; stripping stays in prepare-commit-msg.
 #
 # Keep the regexes below in sync with prepare-commit-msg.sh.
 

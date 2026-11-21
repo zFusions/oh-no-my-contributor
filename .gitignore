@@ -1,0 +1,5 @@
+# oh-no-my-contributor local artifacts
+*.ohnmc.bak
+*.ohnmc.tmp
+__pycache__/
+*.pyc

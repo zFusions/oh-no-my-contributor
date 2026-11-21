@@ -1,26 +1,14 @@
 #!/bin/sh
-# oh-no-my-contributor — commit gate.
+# oh-no-my-contributor — commit gate (prepare-commit-msg).
+# Not skipped by `git commit --no-verify` (unlike pre-commit/commit-msg).
 #
-# Runs as a prepare-commit-msg hook: git does NOT skip this hook on
-# `git commit --no-verify` (only pre-commit and commit-msg are skipped).
+# 1. Identity gate: committer must be in allowed-identities; AI-pattern
+#    author/committer rejected. Fails closed if config is missing.
+# 2. Message gate: AI attribution trailers stripped before recording.
 #
-# Two jobs:
-#   1. Identity gate — the committer identity MUST be in
-#      .githooks/allowed-identities (written at install time). An author
-#      or committer identity matching a known AI pattern is rejected.
-#   2. Message gate — AI attribution trailers (Co-authored-by,
-#      Signed-off-by, "Generated with/by") are stripped from the commit
-#      message before it is recorded.
-#
-# Matching is two-level, same as scripts/clean_ai_authorship.py:
-#   - STRONG patterns (devin-ai-integration, @anthropic.com, [bot]@...)
-#     always count as AI.
-#   - WEAK tokens (claude, gemini, devin...) only count as AI when the
-#     email looks machine-generated, so a human named Claude or Gemini
-#     is never touched.
-#
-# Fails closed: if the allowlist is missing or unreadable, the commit is
-# refused with an explanation rather than silently passing.
+# Two-level matching (same as clean_ai_authorship.py): STRONG patterns
+# always count as AI; WEAK tokens (claude, gemini...) only with a
+# machine-looking email, so humans with those names are untouched.
 
 msg="${1:-}"
 hook_dir="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)"

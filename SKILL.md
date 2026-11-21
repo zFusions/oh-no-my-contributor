@@ -15,51 +15,29 @@ description: >-
 
 # Oh no, my contributor
 
-One skill, two jobs:
-
-1. **Clean** — find and remove AI traces from existing git history
-   (authorship, committer, tagger, commit-message trailers).
-2. **Protect** — install guardrails so no AI tool adds attribution again,
-   enforced by a git hook that runs on *every* commit.
-
-The skill never touches file contents. It only rewrites git metadata,
-keeps a verified backup, and never pushes without explicit user consent.
+Clean AI attribution from git history, then enforce owner-only identity
+on every future commit. Never touch file contents. Never push without
+explicit consent.
 
 ## Workflow
 
-Run these steps in order. Stop and report whenever the user must decide.
-
-### 1. Scan (always first, read-only)
+### 1. Scan (read-only, always first)
 
 ```bash
 python "<skill_dir>/scripts/clean_ai_authorship.py" --dry-run
 ```
 
-`<skill_dir>` is the directory containing this SKILL.md. Add `--source`
-if the user names a different repo than the current one. The default is
-the local repository, so unpushed commits are included.
+`<skill_dir>` = directory containing this SKILL.md. Default source is the
+local repo (unpushed commits included); `--source` overrides. Report:
+commits scanned, AI authors/committers/taggers, messages to clean,
+identities found. If nothing to clean → step 4.
 
-Report to the user, in their language:
+### 2. Explain before touching
 
-- total commits scanned
-- commits with AI author or committer identity
-- commit messages containing AI trailers
-- annotated tags with AI taggers
-- the AI identities found
-
-If the report shows **nothing to clean**, skip to step 4 (Protect).
-Do not rewrite a clean history.
-
-### 2. Explain the plan before touching anything
-
-Tell the user, briefly:
-
-- history rewrite changes every commit SHA; all clones must be re-synced
-- signed commits lose their signatures
-- branches and tags will be force-pushed with `--force-with-lease`
-  (only after their explicit yes)
-- a `backup.git` clone stays on disk until they confirm everything works
-- file contents are provably identical (every commit tree is verified)
+- rewrite changes every commit SHA; all clones must re-sync
+- signed commits lose signatures
+- force-with-lease push only after explicit yes
+- backup.git stays on disk; every commit tree is verified identical
 
 ### 3. Clean (only after explicit consent)
 
@@ -67,106 +45,55 @@ Tell the user, briefly:
 python "<skill_dir>/scripts/clean_ai_authorship.py" --yes
 ```
 
-The script clones a pristine `backup.git` from the **local** repo,
-rewrites a separate `rewritten.git`, verifies that every commit's tree
-is identical via git-filter-repo's commit-map, and prints manual push
-commands (`--force-with-lease`). It exits non-zero if verification
-fails — in that case push nothing and show the user the report.
+Rewrites a copy, verifies per-commit trees via commit-map, prints manual
+push steps. Exit non-zero on verification failure → push nothing.
 
-After a successful rewrite, hand the user the printed next steps
-(fetch first, force-with-lease push `--all` and `--tags`, re-sync local
-clone). Pushing is always their action or an explicitly confirmed
-command — never automatic.
-
-### 4. Protect (always, after clean or when already clean)
-
-Install the guardrails so the problem never comes back:
+### 4. Protect
 
 ```bash
-bash "<skill_dir>/install/install.sh"          # add --force to override existing hooks
-powershell -File "<skill_dir>/install/install.ps1" [-Force]   # Windows
+bash "<skill_dir>/install/install.sh"          # --force overrides existing hooks
+powershell -File "<skill_dir>/install/install.ps1" [-Force]
 ```
 
-The installer is idempotent and safe on existing projects:
+- skips, never breaks, existing hook setups (core.hooksPath, Husky,
+  Lefthook, .git/hooks files); --force backs up first
+- installs .githooks/prepare-commit-msg + reference-transaction and
+  .githooks/allowed-identities
+- injects assets/ai-attribution-block.md into AGENTS.md/CLAUDE.md
+  (markers, *.ohnmc.bak backups, refuses malformed markers)
+- uninstall: install/uninstall.sh / uninstall.ps1
 
-- **Detects existing hook setups first** (`core.hooksPath`, Husky,
-  Lefthook, real files in `.git/hooks`). If one is found it SKIPS the git
-  hook and tells the user — it never silently breaks their hooks.
-  `--force` overrides, backing up the previous config first.
-- backs up a pre-existing `.githooks/prepare-commit-msg` before
-  replacing it, and normalizes the hook to LF line endings
-- copies `assets/prepare-commit-msg.sh` and
-  `assets/reference-transaction.sh` into `.githooks/` and records
-  the owner's identities in `.githooks/allowed-identities` (LF-only,
-  even when installed from PowerShell)
-- injects `assets/ai-attribution-block.md` into `AGENTS.md` and
-  `CLAUDE.md` between `oh-no-my-contributor` markers (creates the files
-  if missing, backs up once as `*.ohnmc.bak`, never overwrites other
-  content, refuses to touch a file with a malformed marker)
-- `install/uninstall.sh` / `uninstall.ps1` remove exactly what was
-  added and restore a previous `core.hooksPath` when `--force` recorded one
+## What the hooks enforce
 
-### What the hooks enforce
+**prepare-commit-msg** (survives `--no-verify`): committer ∈
+allowed-identities; AI-pattern author/committer rejected; AI trailers
+(Co-authored-by, Signed-off-by, Generated with/by) stripped; two-level
+matching keeps humans named Claude/Gemini; empty-after-strip refused;
+fails closed on missing config/tools.
 
-`prepare-commit-msg` is chosen deliberately: `git commit --no-verify`
-skips `pre-commit` and `commit-msg` but **not** this hook.
+**reference-transaction**: same identity rules on every ref update —
+catches commit-tree+update-ref, git am, git tag -a. Only checks objects
+no existing ref can reach; skipped during fetch/clone; messages not
+checked (would break rebases of pre-cleanup history).
 
-- committer identity must be in `allowed-identities` → a bot or agent
-  identity aborts the commit
-- author/committer identities matching AI patterns abort the commit
-  (two-level matching: weak tokens like "Claude" or "Gemini" only count
-  with a machine-looking email, so humans with those names pass)
-- AI trailers (`Co-authored-by`, `Signed-off-by`, `Generated with/by`)
-  are stripped from the message
-- a message that would become empty after stripping is refused
-- fails closed: missing allowlist or missing tools → commit refused
+## Rules
 
-`reference-transaction` covers what the first hook cannot see. On every
-ref update (state `prepared`, where non-zero aborts the transaction) it
-inspects commits and tag objects that no existing ref can reach:
-
-- committer must be allowlisted, committer/tagger/author must not match
-  AI patterns → `git commit-tree` + `update-ref`, `git am`, `git tag -a`
-  and other plumbing paths are gated too
-- skipped during fetch/clone/receive (`GIT_QUARANTINE_PATH`) and only
-  for `refs/heads/*` / `refs/tags/*`, so old history, other refs and
-  remote objects are never in the way
-- messages are not checked here (would break rebases of pre-cleanup
-  history); trailer stripping stays in `prepare-commit-msg`
-
-## Rules for the agent
-
-- Never run the rewrite or any `git push --force*` without the user's
-  explicit approval in the current conversation.
-- Never bypass the hook (`--no-verify` does not skip it anyway; do not
-  try `git config` workarounds, `GIT_*` env tricks, or editing hooks).
-- Never modify project files as part of this skill. Only git metadata,
-  `.githooks/`, and the marked instruction blocks are in scope.
-- If `git-filter-repo` is missing, tell the user to run
-  `pip install git-filter-repo` (only needed for history cleanup).
-- If a branch is protected on the remote, explain the GitHub setting
-  instead of trying workarounds.
-- Be honest about limits: hooks are per-clone (`core.hooksPath` is local
-  git config — a fresh clone needs `git config core.hooksPath .githooks`
-  once). The hooks cover porcelain commits and common plumbing, but NOT
-  `git fast-import`, commits made outside git (GitHub web UI), or
-  deliberate sabotage (`.git/config` edits, hook deletion, hand-rewritten
-  objects). `GIT_COMMITTER_*` env vars can be set to the owner's identity
-  — the gate stops bots using their own name, it cannot prove humanity.
-  `reference-transaction` checks identities, not messages. Nothing local
-  stops an agent that edits `.git/config` or rewrites history by hand.
-  Say this if asked.
-- If `.githooks/` is committed from Windows, the exec bit may be lost
-  (`core.fileMode` off): tell the user to run
-  `git update-index --chmod=+x .githooks/prepare-commit-msg` once.
+- Never rewrite or force-push without explicit approval.
+- Never bypass hooks: no --no-verify tricks (useless anyway), no GIT_*
+  env tricks, no .git/config edits, no hook removal.
+- Never modify project files; only git metadata, .githooks/, marked blocks.
+- Missing git-filter-repo → tell user: `pip install git-filter-repo`
+  (cleanup only, not guardrails).
+- Protected branch → explain the GitHub setting, no workarounds.
+- Honest limits: per-clone hooksPath; no coverage of fast-import, GitHub
+  web UI, or deliberate sabotage; GIT_COMMITTER_* is spoofable;
+  exec bit may need `git update-index --chmod=+x` on Windows commits.
 
 ## Assets
 
 | Path | Purpose |
 |---|---|
-| `scripts/clean_ai_authorship.py` | History scanner + rewriter (git-filter-repo, per-commit tree verification) |
-| `install/install.sh` / `install.ps1` | Idempotent, conflict-aware guardrail installer |
-| `assets/prepare-commit-msg.sh` | Commit gate: owner identity + AI trailer strip (survives `--no-verify`) |
-| `assets/reference-transaction.sh` | Ref gate: identity check on every new commit/tag, catches plumbing bypasses |
-| `assets/ai-attribution-block.md` | Instruction block injected into AGENTS.md / CLAUDE.md |
-| `tests/test-hook.sh` | Hook test matrix (11 cases) |
+| `scripts/clean_ai_authorship.py` | scan + verified rewrite |
+| `install/` | installers + uninstaller |
+| `assets/` | hook sources + instruction block |
+| `tests/test-hook.sh` | 25-case hook test matrix |

@@ -1,30 +1,18 @@
 #!/usr/bin/env python3
-"""
-clean_ai_authorship.py
+"""Rewrite git history so AI tool identities become yours and AI
+attribution trailers are removed from commit messages.
 
-Rewrites a git repository's history so AI tool identities (Copilot,
-Cursor Agent, Devin, Claude, etc.) are replaced by YOUR identity, and
-"Co-authored-by: <AI>" / "Generated with <AI>" / AI "Signed-off-by"
-lines are removed from commit messages.
+Never touches file contents (every commit tree is verified identical),
+never touches other humans' commits, never pushes automatically.
+Keeps an untouched backup.git; rewriting happens on rewritten.git.
 
-What the script does NOT touch:
-  - file contents (git trees are verified identical, commit by commit)
-  - other humans' commits (their credit is never erased)
-  - commits authored by GitHub itself (web UI merges)
-
-Safety:
-  - the source repository is never modified
-  - an untouched "backup.git" clone is kept
-  - rewriting happens on a separate "rewritten.git" copy
-  - nothing is pushed automatically: you inspect, then push yourself
-
-Requirements: Python 3.8+, Git 2.22+, and:  pip install git-filter-repo
+Requires: Python 3.8+, Git 2.22+, `pip install git-filter-repo`.
 
 Usage:
   python clean_ai_authorship.py --dry-run          # report only
   python clean_ai_authorship.py                    # rewrite (current repo)
-  python clean_ai_authorship.py --source https://github.com/you/project.git
-  python clean_ai_authorship.py --pattern "my-other-bot"   # extra pattern
+  python clean_ai_authorship.py --source <url|path>
+  python clean_ai_authorship.py --pattern <regex>  # extra AI pattern
 """
 
 import argparse
