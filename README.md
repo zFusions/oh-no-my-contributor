@@ -28,63 +28,42 @@ This skill fixes that. Past *and* future.
 scan → report → clean → protect
 ```
 
-### 1. Scan
+- **Scan**: read-only report of AI authors, committers, taggers and
+  trailers. No git identity needed.
+- **Clean**: rewrites a copy with `git-filter-repo`. AI identities
+  become yours, AI trailers disappear, every commit tree is verified
+  identical, `backup.git` stays untouched, push is manual with
+  `--force-with-lease`.
+- **Protect**: two git hooks plus an instruction block for agents.
 
-Read-only report of every AI author, committer, tagger and message
-trailer in the repo. Works without a configured git identity.
+Your code never changes. Only the fingerprints.
 
-### 2. Clean
+### The two hooks
 
-Rewrites history on a *copy* with `git-filter-repo`:
+**`prepare-commit-msg`** runs on every `git commit` and `git merge`,
+`--no-verify` included: committer must be the owner identity recorded
+at install, AI-pattern identities are rejected, AI trailers are
+stripped. Humans named Claude or Gemini are safe (two-level matching).
+Missing config fails closed.
 
-- AI identities become yours
-- AI trailers disappear from commit messages
-- **every** commit's file tree is verified identical through the
-  commit-map — not just branch tips
-- a `backup.git` stays on disk, untouched
-- push is manual, with `--force-with-lease`
+**`reference-transaction`** watches every ref update and catches what
+the first hook can't see: `commit-tree`, `git am`, `git tag -a`. New
+commits with AI identities or AI trailers abort the transaction; old
+history is never scanned and fetch/clone is untouched.
 
-Your code does not change. Only the fingerprints do.
-
-### 3. Protect
-
-Two hooks, because one hook is a suggestion and two hooks are a policy.
-
-**`prepare-commit-msg`** — runs on `git commit` and `git merge`,
-*including* `git commit --no-verify` (yes, that flag does not skip it):
-
-- committer must match the owner identity recorded at install time
-- AI-pattern author identities are rejected
-- AI trailers (`Co-authored-by`, `Signed-off-by`, `Generated with/by`)
-  are stripped — humans named Claude or Gemini are safe, the matcher is
-  two-level on purpose
-- a message that would become empty is refused with an explanation
-- missing config or tools → the commit fails closed, not open
-
-**`reference-transaction`** — the bouncer for the back door. The first
-hook cannot see plumbing, so this one watches every ref update:
-
-- `git commit-tree` + `update-ref`? Checked.
-- `git am`, `git rebase`, `git tag -a`? Checked.
-- AI trailers in a plumbing commit's message? Rejected — objects are
-  immutable once hashed, so the transaction aborts instead of
-  rewriting.
-- It only inspects objects no existing ref can reach, so your old
-  history never gets in the way, and it sleeps through fetch/clone so
-  pulling can never brick anything.
-
-Plus an instruction block injected into agent instruction files —
-`AGENTS.md` and `CLAUDE.md` always, `GEMINI.md`, `.cursorrules`,
-`.windsurfrules` and `.github/copilot-instructions.md` when they
-exist — so every AI agent that reads the repo knows the rules before
-it even reaches for `git commit`. Works with any agent: install the
-skill folder into whichever skills directory yours uses, or run
-`npx skills add zFusions/oh-no-my-contributor`.
+The instruction block lands in `AGENTS.md`/`CLAUDE.md` plus any
+existing `GEMINI.md`, `.cursorrules`, `.windsurfrules` and
+`.github/copilot-instructions.md`, so every agent that reads the repo
+knows the rules before it commits.
 
 ## Install
 
 The whole `oh-no-my-contributor/` folder **is** the skill. Drop it into
-whichever skills directory your agent reads:
+whichever skills directory your agent reads, or run:
+
+```bash
+npx skills add zFusions/oh-no-my-contributor
+```
 
 | Agent | Path |
 |---|---|
@@ -105,52 +84,36 @@ powershell -File install/install.ps1   # Windows PowerShell
 
 The installer **never breaks existing hooks**: if it finds
 `core.hooksPath`, Husky, Lefthook or real hooks in `.git/hooks`, it
-skips the git hook and warns you instead of overriding. `--force`
-overrides with a backup of the previous config.
-
-To leave: `install/uninstall.sh` / `uninstall.ps1` removes exactly what
-was added and restores a previous `core.hooksPath` when `--force`
-recorded one.
+skips the git hook and warns instead of overriding. `--force` overrides
+with a backup. `install/uninstall.sh` / `uninstall.ps1` removes exactly
+what was added.
 
 ## Requirements
 
 - `git` 2.22+
-- Python 3.8+ with `git-filter-repo` (`pip install git-filter-repo`)
-  — only needed for the history cleanup, not for the guardrails
+- Python 3.8+ with `git-filter-repo` (`pip install git-filter-repo`),
+  only for the history cleanup, not for the guardrails
 
-## The fine print (read it, it's short)
+## Honest limits
 
-This tool rewrites git *metadata*, never file contents. Before anything
-is pushed, the script compares the tree of **every single commit**
-(old → new via commit-map). Worst case, you keep `backup.git` and
-re-clone. There is no scenario where your code changes.
+This tool rewrites git *metadata*, never file contents. Before pushing,
+the script compares the tree of **every commit** (old to new via
+commit-map). Worst case: keep `backup.git` and re-clone.
 
-**Honest limits:**
-
-- `core.hooksPath` is per-clone local config — on a fresh clone, run
-  `git config core.hooksPath .githooks` once (or re-run the installer).
-- The hooks cover every porcelain path (`commit`, `merge`, `am`,
-  `rebase`, `cherry-pick`, `tag`) and the common plumbing paths
-  (`commit-tree` + `update-ref`). What remains: `git fast-import`,
-  commits made outside git (the GitHub web UI never sees local hooks),
-  and deliberate sabotage — editing `.git/config`, deleting the hooks,
-  rewriting objects by hand. No local tool can stop that.
-- The identity gate stops bots committing *under their own name*. It
-  cannot prove humanity: `GIT_COMMITTER_*` env vars can be set to the
-  owner's identity. Seatbelt, not border wall.
-- AI-pattern matching is heuristic. It can miss an unknown tool and,
-  rarely, flag a human whose name looks machine-generated. Read the
-  dry-run report before confirming.
-- `reference-transaction` rejects AI trailers in new commit messages
-  but cannot rewrite them: a plumbing commit (`commit-tree`) with the
-  owner's identity and AI trailers is refused, not cleaned. Use
-  `git commit`/`merge` for messages you want stripped automatically.
-- Committed from Windows? The exec bit may be missing
-  (`core.fileMode` is off):
+- `core.hooksPath` is per-clone: on a fresh clone run
+  `git config core.hooksPath .githooks` once.
+- Not covered: `git fast-import`, GitHub web UI commits, deliberate
+  sabotage of `.git/`. No local tool stops that.
+- The gate blocks bots under their own name. `GIT_COMMITTER_*` can be
+  set to your identity: seatbelt, not border wall.
+- Pattern matching is heuristic: it can miss unknown tools or rarely
+  flag a human. Read the dry-run report before confirming.
+- Plumbing commits with AI trailers are refused, not cleaned. Use
+  `git commit`/`merge` for automatic stripping.
+- Windows: the exec bit may need
   `git update-index --chmod=+x .githooks/prepare-commit-msg .githooks/reference-transaction`
-- History cleanup cannot retract data already cached by third parties
-  (search indexes, forks); it cleans the canonical repo.
-- Rewriting history drops GPG/SSH commit signatures.
+- Cleanup can't retract cached copies (search indexes, forks), and
+  rewriting drops commit signatures.
 
 ## Layout
 
@@ -168,10 +131,9 @@ oh-no-my-contributor/
 │   └── uninstall.sh / .ps1      # removes only what was added
 ├── tests/
 │   └── test-hook.sh             # hook test matrix
-└── .github/workflows/test.yml   # CI: hooks on 3 OS, installer + uninstaller,
-                                 #     Python dry-run on a fixture repo
+└── .github/workflows/test.yml   # CI: hooks on 3 OS, installer, cleanup script
 ```
 
 ## License
 
-MIT — do whatever you want with it, just keep your name on your commits.
+MIT. Do whatever you want with it, just keep your name on your commits.
