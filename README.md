@@ -90,7 +90,6 @@ npx skills add zFusions/oh-no-my-contributor
 
 | Agent | Path |
 |---|---|
-| Devin | `.devin/skills/oh-no-my-contributor/` |
 | Claude Code | `.claude/skills/oh-no-my-contributor/` |
 | Cursor / agents.md-compatible | your skills directory, or repo root |
 | Anything else | keep the folder next to the project and point the agent at `SKILL.md` |
